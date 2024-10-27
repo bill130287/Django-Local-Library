@@ -2,6 +2,8 @@ from django.shortcuts import render
 from .models import Book, Author, BookInstance, Genre
 from django.views import generic
 from django.http import Http404
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
 # Create your views here.
 
@@ -71,3 +73,27 @@ class AuthorDetailView(generic.DetailView):
     model = Author
 
     # def author_detail_view(request):
+
+class LoanedBooksByUserListView(LoginRequiredMixin, generic.ListView):
+    """Generic class-based view listing books on loan to current user."""
+    model = BookInstance
+    template_name = 'catalog/bookinstance_list_borrowed_user.html'
+    paginate_by = 10
+
+    def get_queryset(self):
+        return (
+            BookInstance.objects.filter(borrower=self.request.user)
+            .filter(status__exact='o')
+            .order_by('due_back')
+        )
+
+class LoanedBooksAllListView(PermissionRequiredMixin, generic.ListView):
+    permission_required = ('catalog.can_mark_returned', 'catalog.change_book')
+    template_name = 'catalog/bookinstance_list_on_borrowed_all.html'
+    paginate_by = 10
+
+    def get_queryset(self):
+        return (
+            BookInstance.objects.filter(status__exact='o')
+            .order_by('due_back')
+        )
